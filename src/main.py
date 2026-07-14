@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings("ignore")
 
+from pathlib import Path
 import os
 import pandas as pd
 import seaborn as sns
@@ -23,7 +24,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
 
-def load_data(path="../data/WineQT.csv"):
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_PATH = BASE_DIR / "data" / "WineQT.csv"
+RESULTS_DIR = BASE_DIR / "results"
+
+
+def load_data(path=DATA_PATH):
     df = pd.read_csv(path)
     return df
 
@@ -41,27 +47,28 @@ def prepare_data(df):
     return df, X, y
 
 
-def create_results_dir(path="../results"):
+def create_results_dir(path=RESULTS_DIR):
     os.makedirs(path, exist_ok=True)
 
 
-def run_eda(df, results_path="../results"):
+def run_eda(df, results_path=RESULTS_DIR):
     create_results_dir(results_path)
 
     sns.set_style("whitegrid")
+
     plt.figure(figsize=(8, 5))
     sns.countplot(x="quality_bin", data=df, palette="viridis")
     plt.title("Distribuição da variável alvo binária")
     plt.xlabel("Classe")
     plt.ylabel("Frequência")
     plt.tight_layout()
-    plt.savefig(f"{results_path}/target_distribution.png")
+    plt.savefig(results_path / "target_distribution.png")
     plt.close()
 
     df.hist(bins=20, figsize=(16, 12), color="steelblue", edgecolor="black")
     plt.suptitle("Distribuição das variáveis numéricas", fontsize=16)
     plt.tight_layout()
-    plt.savefig(f"{results_path}/histograms.png")
+    plt.savefig(results_path / "histograms.png")
     plt.close()
 
     corr = df.drop(columns=["quality"]).corr(numeric_only=True)
@@ -69,11 +76,11 @@ def run_eda(df, results_path="../results"):
     sns.heatmap(corr, cmap="coolwarm", annot=False)
     plt.title("Mapa de calor das correlações")
     plt.tight_layout()
-    plt.savefig(f"{results_path}/correlation_heatmap.png")
+    plt.savefig(results_path / "correlation_heatmap.png")
     plt.close()
 
     corr_target = corr["quality_bin"].sort_values(ascending=False)
-    corr_target.to_csv(f"{results_path}/correlation_with_target.csv", header=True)
+    corr_target.to_csv(results_path / "correlation_with_target.csv", header=True)
 
     return corr_target
 
@@ -130,7 +137,7 @@ def run_cross_validation(X, y, log_model, rf_model):
     }
 
 
-def save_roc_curve(log_model, rf_model, X_test, y_test, results_path="../results"):
+def save_roc_curve(log_model, rf_model, X_test, y_test, results_path=RESULTS_DIR):
     create_results_dir(results_path)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -138,11 +145,11 @@ def save_roc_curve(log_model, rf_model, X_test, y_test, results_path="../results
     RocCurveDisplay.from_estimator(rf_model, X_test, y_test, ax=ax, name="Random Forest")
     plt.title("Curva ROC dos modelos")
     plt.tight_layout()
-    plt.savefig(f"{results_path}/roc_curve.png")
+    plt.savefig(results_path / "roc_curve.png")
     plt.close()
 
 
-def save_feature_importance(rf_model, X, results_path="../results"):
+def save_feature_importance(rf_model, X, results_path=RESULTS_DIR):
     create_results_dir(results_path)
 
     feature_importance = pd.DataFrame({
@@ -150,7 +157,7 @@ def save_feature_importance(rf_model, X, results_path="../results"):
         "Importância": rf_model.feature_importances_
     }).sort_values(by="Importância", ascending=False)
 
-    feature_importance.to_csv(f"{results_path}/feature_importance.csv", index=False)
+    feature_importance.to_csv(results_path / "feature_importance.csv", index=False)
 
     plt.figure(figsize=(10, 6))
     sns.barplot(
@@ -161,7 +168,7 @@ def save_feature_importance(rf_model, X, results_path="../results"):
     )
     plt.title("Top 10 variáveis mais importantes - Random Forest")
     plt.tight_layout()
-    plt.savefig(f"{results_path}/feature_importance.png")
+    plt.savefig(results_path / "feature_importance.png")
     plt.close()
 
     return feature_importance
@@ -198,11 +205,11 @@ def main():
     print(results_df)
 
     create_results_dir()
-    results_df.to_csv("../results/model_metrics.csv", index=False)
+    results_df.to_csv(RESULTS_DIR / "model_metrics.csv", index=False)
 
     cv_results = run_cross_validation(X, y, log_model, rf_model)
     cv_df = pd.DataFrame(list(cv_results.items()), columns=["Modelo", "F1 médio CV"])
-    cv_df.to_csv("../results/cross_validation_results.csv", index=False)
+    cv_df.to_csv(RESULTS_DIR / "cross_validation_results.csv", index=False)
 
     print("\nValidação cruzada:")
     print(cv_df)
